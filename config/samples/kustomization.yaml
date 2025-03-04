@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- devops_v1_autoinspection.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

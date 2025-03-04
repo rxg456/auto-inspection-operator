@@ -1,0 +1,28 @@
+apiVersion: devops.rxg98.cn/v1
+kind: AutoInspection
+metadata:
+  labels:
+    app.kubernetes.io/name: auto-inspection-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: autoinspection-sample
+spec:
+  jobs:
+    - name: "inspection-job"
+      schedule: "0 10 * * *"
+  smtp:
+    host: smtp.163.com
+    port: 465
+    username: "your_email@163.com"
+    password: "your_password"
+    from: "your_email@163.com"
+  notify_to:
+    - "your_email@163.com"
+  prometheus_url: "http://prometheus.example.com"
+  inspection_object:
+    business: "demo"
+    hosts:
+      labels:
+        business: "demo"
+      nodes:
+        - "192.168.1.1"
+        - "192.168.1.2"
