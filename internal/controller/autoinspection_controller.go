@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -25,6 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	devopsv1 "github.com/rxg456/auto-inspection-operator/api/v1"
+	"github.com/rxg456/auto-inspection-operator/internal/controller/inspection"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // AutoInspectionReconciler reconciles a AutoInspection object
@@ -39,19 +42,79 @@ type AutoInspectionReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the AutoInspection object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
 func (r *AutoInspectionReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.Info("Reconciling AutoInspection", "namespacedName", req.NamespacedName)
 
-	// TODO(user): your logic here
+	// 获取AutoInspection对象
+	var app devopsv1.AutoInspection
+	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
+		// 如果找不到资源，可能已被删除
+		logger.Error(err, "Unable to fetch AutoInspection")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	return ctrl.Result{}, nil
+	// 检查每个任务是否应该执行
+	shouldRun := false
+	var jobToRun *devopsv1.Job
+	for i, job := range app.Spec.Jobs {
+		canRun, err := inspection.ShouldRunNow(job, app.Status.LastInspectionTime)
+		if err != nil {
+			logger.Error(err, "检查任务执行时间失败", "job", job.Name)
+			continue
+		}
+
+		if canRun {
+			shouldRun = true
+			jobToRun = &app.Spec.Jobs[i]
+			break
+		}
+	}
+
+	// 如果没有任务需要执行，则计算下一次检查时间
+	if !shouldRun || jobToRun == nil {
+		// 默认10分钟后重新检查
+		return ctrl.Result{RequeueAfter: 10 * time.Minute}, nil
+	}
+
+	logger.Info("开始执行巡检任务", "job", jobToRun.Name)
+
+	inspector, err := inspection.NewInspector(&app)
+	if err != nil {
+		logger.Error(err, "创建巡检器失败")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+
+	// 执行巡检
+	if err := inspector.RunInspection(ctx); err != nil {
+		logger.Error(err, "执行巡检失败")
+		return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
+	}
+
+	// 更新状态
+	now := metav1.NewTime(time.Now())
+	app.Status.LastInspectionTime = &now
+
+	if err := r.Status().Update(ctx, &app); err != nil {
+		logger.Error(err, "更新AutoInspection状态失败")
+		return ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+	}
+
+	// 计算下一次运行时间
+	nextRun, err := inspection.GetNextRunTime(*jobToRun, app.Status.LastInspectionTime)
+	if err != nil {
+		logger.Error(err, "计算下一次运行时间失败")
+		return ctrl.Result{RequeueAfter: 10 * time.Minute}, nil
+	}
+
+	// 计算需要等待的时间
+	waitDuration := time.Until(nextRun)
+	if waitDuration < 0 {
+		waitDuration = 1 * time.Minute // 如果下次运行时间已过，1分钟后重试
+	}
+
+	logger.Info("巡检任务执行完成，等待下次执行", "nextRun", nextRun, "waitDuration", waitDuration)
+	return ctrl.Result{RequeueAfter: waitDuration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -28,18 +28,73 @@ type AutoInspectionSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of AutoInspection. Edit autoinspection_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// 定义巡检任务和调度时间
+	Jobs []Job `json:"jobs"`
+
+	// 定义邮件服务器配置
+	SMTP SMTP `json:"smtp"`
+
+	// 定义接收通知的邮件地址
+	NotifyTo []string `json:"notifyTo"`
+
+	// 定义Prometheus API地址
+	PrometheusURL string `json:"prometheusURL"`
+
+	// 定义巡检对象（业务的主机）
+	InspectionObject InspectionObject `json:"inspectionObject"`
+}
+
+// Job定义巡检任务和调度
+type Job struct {
+	// 任务名称
+	Name string `json:"name"`
+	// 任务Cron表达式
+	Schedule string `json:"schedule"`
+}
+
+// SMTP定义邮件服务器配置
+type SMTP struct {
+	// 服务器地址
+	Server string `json:"server"`
+	// 服务器端口
+	Port int `json:"port"`
+	// 发件人地址
+	From string `json:"from"`
+	// 用户名
+	Username string `json:"username"`
+	// 密码
+	Password string `json:"password"`
+}
+
+// 巡检对象
+type InspectionObject struct {
+	// 业务名称
+	Business string `json:"business"`
+	// 主机名称
+	Hosts Hosts `json:"hosts"`
+}
+
+// 主机信息
+type Hosts struct {
+	// 标签
+	Labels map[string]string `json:"labels,omitempty"`
+	// 主机列表
+	Nodes []string `json:"nodes,omitempty"`
 }
 
 // AutoInspectionStatus defines the observed state of AutoInspection.
 type AutoInspectionStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// 最后巡检时间
+	LastInspectionTime *metav1.Time `json:"lastInspectionTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Last Inspection",type="date",JSONPath=".status.lastInspectionTime",description="Last inspection time"
 
 // AutoInspection is the Schema for the autoinspections API.
 type AutoInspection struct {

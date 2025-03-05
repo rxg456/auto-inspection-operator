@@ -1,0 +1,142 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: autoinspections.devops.rxg98.cn
+spec:
+  group: devops.rxg98.cn
+  names:
+    kind: AutoInspection
+    listKind: AutoInspectionList
+    plural: autoinspections
+    singular: autoinspection
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+        - description: Last inspection time
+          jsonPath: .status.lastInspectionTime
+          name: Last Inspection
+          type: date
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: AutoInspection is the Schema for the autoinspections API.
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: AutoInspectionSpec defines the desired state of AutoInspection.
+              properties:
+                inspectionObject:
+                  description: 定义巡检对象（业务的主机）
+                  properties:
+                    business:
+                      description: 业务名称
+                      type: string
+                    hosts:
+                      description: 主机名称
+                      properties:
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: 标签
+                          type: object
+                        nodes:
+                          description: 主机列表
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                  required:
+                    - business
+                    - hosts
+                  type: object
+                jobs:
+                  description: 定义巡检任务和调度时间
+                  items:
+                    description: Job定义巡检任务和调度
+                    properties:
+                      name:
+                        description: 任务名称
+                        type: string
+                      schedule:
+                        description: 任务Cron表达式
+                        type: string
+                    required:
+                      - name
+                      - schedule
+                    type: object
+                  type: array
+                notifyTo:
+                  description: 定义接收通知的邮件地址
+                  items:
+                    type: string
+                  type: array
+                prometheusURL:
+                  description: 定义Prometheus API地址
+                  type: string
+                smtp:
+                  description: 定义邮件服务器配置
+                  properties:
+                    from:
+                      description: 发件人地址
+                      type: string
+                    password:
+                      description: 密码
+                      type: string
+                    port:
+                      description: 服务器端口
+                      type: integer
+                    server:
+                      description: 服务器地址
+                      type: string
+                    username:
+                      description: 用户名
+                      type: string
+                  required:
+                    - from
+                    - password
+                    - port
+                    - server
+                    - username
+                  type: object
+              required:
+                - inspectionObject
+                - jobs
+                - notifyTo
+                - prometheusURL
+                - smtp
+              type: object
+            status:
+              description: AutoInspectionStatus defines the observed state of AutoInspection.
+              properties:
+                lastInspectionTime:
+                  description: 最后巡检时间
+                  format: date-time
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

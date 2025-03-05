@@ -1,28 +1,39 @@
 apiVersion: devops.rxg98.cn/v1
 kind: AutoInspection
 metadata:
-  labels:
-    app.kubernetes.io/name: auto-inspection-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: autoinspection-sample
+  name: auto-inspection-sample
 spec:
+  # 定义巡检任务和调度时间
   jobs:
-    - name: "inspection-job"
-      schedule: "0 10 * * *"
+    - name: daily-check
+      schedule: "0 10 * * *" # 每天10点执行
+
+  # 定义邮件服务器配置
   smtp:
-    host: smtp.163.com
+    server: "smtp.qq.com"
     port: 465
-    username: "your_email@163.com"
-    password: "your_password"
-    from: "your_email@163.com"
-  notify_to:
-    - "your_email@163.com"
-  prometheus_url: "http://prometheus.example.com"
-  inspection_object:
-    business: "demo"
+    from: "1111111111@qq.com"
+    username: "1111111111@qq.com"
+    password: "**********"
+
+  # 定义接收通知的邮件地址
+  notifyTo:
+    - "devops@qq.com"
+    - "ops@qq.com"
+    - "business@163.com"
+
+  # 定义Prometheus API地址
+  prometheusURL: "http://prometheus:9090"
+
+  # 定义巡检对象
+  inspectionObject:
+    business: "devops业务系统"
+    # labels和nodes最少配置一个
     hosts:
+      # 通过标签获取主机信息
       labels:
-        business: "demo"
+        business: "devops"
+      # 通过节点列表
       nodes:
-        - "192.168.1.1"
-        - "192.168.1.2"
+        - "192.168.0.1:9100"
+        - "192.168.0.2:9100"
